@@ -1,0 +1,11 @@
+{
+    "type": "module",
+    "dependencies": {
+        "puppeteer": "^24.34.0",
+        "temporal-polyfill": "^0.3.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.0.3",
+        "typescript": "^5.9.3"
+    }
+}
