@@ -1,6 +1,6 @@
-import puppeteer from 'puppeteer'
 import fs from 'node:fs'
 import * as L from './lib/log.ts'
+import puppeteer from './puppeteer.ts'
 
 const log = L.makeLogger('log.txt')
 
@@ -9,6 +9,7 @@ const browser = await puppeteer.launch({
     args: ['--no-sandbox'],
 })
 const page = await browser.newPage()
+await page.setBypassCSP(true)
 await page.goto('https://linkedin.com')
 try {
     await new Promise(resolve => page.once('close', resolve))
