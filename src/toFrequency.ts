@@ -27,6 +27,7 @@ for(const [jobId, response] of Object.entries(responses)) {
     }
 }
 
+
 //const toInclude = new Set([...pointCount.entries()].sort((a, b) => -(a[1] - b[1])).slice(0, 100).map(it => it[0]))
 
 const points = new Map<string, { name: string, frequency: number }>()
@@ -107,6 +108,10 @@ result = result.trim()
 
 fs.writeFileSync('./data/grahp.gexf', result)
 
+const orderedPoints = [...points.values()].sort((a, b) => -(a.frequency - b.frequency))
+
+fs.writeFileSync('./data/list.txt', orderedPoints.map(it => `${it.name} - ${it.frequency}`).join('\n'))
+
 function encodeXmlNonAlnum(str: string) {
     return str.split('').map(c => {
         if (/[a-zA-Z0-9 ]/.test(c)) {
@@ -122,4 +127,5 @@ function toId(name: string) {
         .toLowerCase()
         .replace(/ *\d*$/, '')
         .replaceAll(/[^a-z0-9#+]/g, '')
+        .replace(/\js$/, '')
 }
