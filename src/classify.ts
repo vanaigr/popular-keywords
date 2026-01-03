@@ -44,11 +44,13 @@ const log = L.makeLogger('log.txt')
 
 const openRouter = new OpenRouter({ apiKey: config.apiKey });
 
-const technologyCounts: Partial<Record<string, number>> = {}
+const responsesPath = './data/jobCategoryResponses.json'
+const responses = await U.readJson<Record<string, unknown>>(responsesPath, {}, log)
 
 for(let i = 0; i < jobs.length; i++) {
     const job = jobs[i]
-    log.I('Processing job ', [i], ' (id ', [job.jobId], ')')
+    if(responses['' + job.jobId] !== undefined) continue
+    log.I('Processing job ', [i], ' of ', [jobs.length], ' (id ', [job.jobId], ')')
 
     const response = await openRouter.chat.send({
         model: 'nvidia/nemotron-3-nano-30b-a3b:free',
@@ -74,31 +76,8 @@ for(let i = 0; i < jobs.length; i++) {
         ],
     })
 
-    const responsesPath = './data/extract-responses.json'
-    const responses = await U.readJson<unknown[]>(responsesPath, [], log)
-    responses.push(response)
+    responses['' + job.jobId] = response
     await fsp.writeFile(responsesPath, JSON.stringify(responses))
-
-    const content = response.choices[0].message.content as string
-    if(typeof content !== 'string') {
-        log.E('Unexpected output')
-        break
-    }
-
-    const from = content.indexOf('[')
-    const to = content.lastIndexOf(']')
-    if(from === -1 || to === -1) {
-        log.E('Incorrect format')
-        break
-    }
-    const technologies = JSON.parse(content.substring(from, to + 1))
-
-    for(const technology of technologies) {
-        technologyCounts[technology] = (technologyCounts[technology] ?? 0) + 1
-    }
-    log.I('Added ', [technologies.length], ' technologies')
-
-    await fsp.writeFile('./data/technologies.json', JSON.stringify(technologyCounts))
 }
 
 log.I('Done')
