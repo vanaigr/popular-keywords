@@ -4,7 +4,7 @@ import fsp from 'node:fs/promises'
 import * as L from './lib/log.ts'
 import config from '../config.ts'
 
-type Job = {
+export type Job = {
     jobId: string | null
     company: string | null
     title: string | null
