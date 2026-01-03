@@ -13,3 +13,11 @@ export async function readJson<T>(path: string, fallback: T, log: L.Log): Promis
     }
 }
 
+export function getHash(...fields: unknown[]) {
+  let result = '';
+  for (const it of fields) {
+    const el = '' + it;
+    result += el.length.toString(36) + '$' + el;
+  }
+  return result;
+}
