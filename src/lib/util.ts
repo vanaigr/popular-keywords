@@ -21,3 +21,7 @@ export function getHash(...fields: unknown[]) {
   }
   return result;
 }
+
+export function delay(seconds: number) {
+    return new Promise<void>(s => setTimeout(s, seconds * 1000))
+}
