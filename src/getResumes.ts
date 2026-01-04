@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import * as U from './lib/util.ts'
 import * as L from './lib/log.ts'
 
-type Resume = {
+export type Resume = {
     fetchTime: number
     title: string
     location: string
