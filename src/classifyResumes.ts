@@ -18,12 +18,7 @@ const responses = await U.readJson<Record<string, unknown>>(responsesPath, {}, l
 for(let i = 0; i < resumes.length; i++) {
     const [resumeUrl, resume] = resumes[i]
     if(responses[resumeUrl] !== undefined) {
-        if((responses[resumeUrl] as any).choices[0].message.content === '[]') {
-            log.W('Unbailing resume')
-        }
-        else {
-            continue
-        }
+        continue
     }
     log.I('Processing resume ', [i], ' of ', [resumes.length], ' (', [resumeUrl], ')')
 
@@ -34,15 +29,13 @@ for(let i = 0; i < resumes.length; i++) {
         .replace(/contact this candidate$/i, '')
         .trim()
 
-    let startIndex = Infinity
-
-    const index1 = undedactedText.search(/(p *r *o *f *e *s *s *i *o *n *a *l *)?s *u *m *m *a *r *y/i)
-    if(index1 !== -1) startIndex = Math.min(startIndex, index1)
-    const index2 = undedactedText.search(/(w *o *r *k *)?e *x *p *e *r *i *e *n *c *e/i)
-    if(index2 !== -1) startIndex = Math.min(startIndex, index2)
-    const index3 = undedactedText.search(/a *b *o *u *t/i)
-    if(index3 !== -1) startIndex = Math.min(startIndex, index3)
-
+    const candidateStarts = [
+        undedactedText.search(/(p *r *o *f *e *s *s *i *o *n *a *l *)?s *u *m *m *a *r *y/i),
+        undedactedText.search(/(w *o *r *k *)?e *x *p *e *r *i *e *n *c *e/i),
+        undedactedText.search(/a *b *o *u *t/i),
+        undedactedText.search(/s *k *i *l *l *s/i),
+    ]
+    let startIndex = Math.min(Infinity, ...candidateStarts.filter(it => it !== -1))
     if(startIndex === Infinity) {
         log.E('Could not find the start of the resume')
         break
@@ -65,10 +58,12 @@ for(let i = 0; i < resumes.length; i++) {
         continue
     }
 
+    /*
     if(text.length > 20000) {
         log.W('Model will explode. Skipping')
         continue
     }
+    */
 
     const response = await openRouter.chat.send({
         model: 'nvidia/nemotron-3-nano-30b-a3b:free',
@@ -98,58 +93,45 @@ for(let i = 0; i < resumes.length; i++) {
 
     responses['' + resumeUrl] = response
     await fsp.writeFile(responsesPath, JSON.stringify(responses, null, 2))
-
-    try {
-        const array = JSON.parse((response.choices[0].message.content as string).trim())
-        if(array.length === 0) {
-            log.W('Bailed out')
-        }
-        else {
-            log.I('Found ', [array.length], ' technologies')
-        }
-    }
-    catch(err) {
-        log.E('Could not parse model output ', [err])
-        break
-    }
 }
 
 log.I('Done')
 
 function makePrompt(desc: string) {
-    const b = '`'
-
     return `
-You are an assistant that extracts technical and professional keywords from candidate resumes. Given a resume, identify all relevant keywords such as programming languages, frameworks, tools, methodologies, platforms, and technologies.
+You are an assistant that extracts technical keywords from candidate resumes. Given a Resume, return a list of strings containing the relevant keywords, such as programming languages, frameworks, libraries, tools, platforms, cloud services, databases, methodologies.
 
-Rules:
-1. Ignore:
-   - Generic words (e.g., "experience", "responsible", "team")
-   - Terms that are not technologies or categories of technologies (e.g., "MVP", "rate limiting", "authentication")
-   - Technical Skills section of the resume and similar sections, like Interests, that list the skills with no context
+**Extraction algorithm**
 
-2. Include technology categories if they are used in the text, examples:
-   - "Databases"
-   - "ORM"
-   - "API"
-   - "REST"
-   - "Microservices"
-   - "CI/CD"
-   - "Cloud"
+Start by writing a list of small sections, from which to extract keywords, e.g. each position of each job.
+- Include sections like "Summary", "Professional Experience", "Work Experience", "Projects".
+- Skip "Skills", "Interests", or similar sections that are only lists of skills with no contextual usage.
 
-3. Include both generic technologies and their specific parts if they are used in the text.
-   - For example, if the text mentions ${b}AWS (ECS Fargate, RDS, S3, ALB)${b}, output should include:
-     ["AWS", "AWS ECS Fargate", "AWS RDS", "AWS S3", "AWS ALB"]
+Then, go through the sections one by one, and produce a list of keywords, according to these rules:
+- Include technologies. Examples: React, Next, C#, .NET, RDS.
+- Include technology categories. Examples: Databases, ORM, API, REST, Microservices, CI/CD, Cloud.
+- Ignore keywords that are not technologies or technology categories (e.g., MVP, rate limiting, authentication, roadmap, leadership, performance).
 
-4. Output must be a JSON array of strings, order is irrelevant. For example:
-["Python", "React", "GCP", "Agile", "Docker"]
+Finally, produce the output list by concatenating keywords from each section, with section names above each sub-list. Duplicates are fine. Example:
+# Full stack developer
+- Python
+- React
+- CI/CD
+# SE Intern, Google
+- React
+- Next.js
+# Bullet 1
+- AWS
 
-5. **Important**: Do not deduplicate names, just find terms, check against the rules above, and output as a list.
 
-Job description:
+Resume:
 """
 ${desc}
 """
 `.trim()
 }
 
+/*
+- If a generic technology and specific components are both mentioned, include both. Example: "AWS (ECS Fargate, RDS, S3, ALB)" -> "AWS", "AWS ECS Fargate", "AWS RDS", "AWS S3", "AWS ALB".
+- If only the specific component is mentioned, use its full name. Example: "ECS Fargate, S3" -> "AWS ECS Fargate", "AWS S3"
+*/

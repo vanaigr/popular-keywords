@@ -11,14 +11,8 @@ const responses: Record<string, any> = JSON.parse(fs.readFileSync('./data/jobCat
 for(const [jobId, response] of Object.entries(responses)) {
     const l = log.addedCtx([jobId])
 
-    const content: string = response.choices[0].message.content
-    const from = content.indexOf('[')
-    const to = content.lastIndexOf(']')
-    if(from === -1 || to === -1) {
-        l.W('Skipping')
-        continue
-    }
-    const technologies: string[] = JSON.parse(content.substring(from, to + 1))
+    const technologies = U.toArray(response.choices[0].message.content, l)
+    if(technologies === undefined) continue
     technologiesArray.push(technologies)
 
     for(const it of technologies) {
