@@ -1,6 +1,6 @@
 import R, { useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import data from './data.json'
+import data from '../../data/jobs.json'
 
 type Counts = Map<string, number>
 
